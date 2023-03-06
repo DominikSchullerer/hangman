@@ -21,10 +21,11 @@ class Rules
     word.include?(char)
   end
 
-  def self.guess_is_valid?(char, guessed_letters)
+  def self.input_is_valid?(input, guessed_letters)
     valid = true
-    valid = false unless char.match?(/\A[A-Z]\z/)
-    valid = false if guessed_letters.include?(char)
+    valid = false unless input.match?(/\A[A-Z]\z/)
+    valid = false if guessed_letters.include?(input)
+    valid = true if input == 'SAVE'
     valid
   end
 
@@ -67,6 +68,8 @@ class GM
       @board.wrong_letters << char
     end
 
+    @player.guessed_letters << char
+
     @board.word_string = Rules.updated_word_string(@board.word, @board.correct_letters)
   end
 
@@ -75,13 +78,13 @@ class GM
 
     @board.draw_board
     while gamestate == 'playing'
-      print 'Do you want to save and quit (y)? '
-      if gets.chomp.downcase == 'y'
+      input = @player.player_input
+
+      if input == 'SAVE'
         save_game
         gamestate = 'saved'
       else
-        guess = @player.player_guess
-        handle_guess(guess)
+        handle_guess(input)
         @board.draw_board
         gamestate = Rules.gamestate(@board.word, @board.word_string, @board.wrong_letters)
       end
@@ -188,21 +191,20 @@ class Player
     @guessed_letters = guessed_letters
   end
 
-  def player_guess
-    valid_guess = false
+  def player_input
+    valid_input = false
 
-    until valid_guess
-      puts 'Guess a letter of the hidden word.'
-      guess = gets.chomp.upcase
-      if Rules.guess_is_valid?(guess, @guessed_letters)
-        valid_guess = true
+    until valid_input
+      puts 'Guess a letter of the hidden word or enter (save) to save and quit'
+      input = gets.chomp.upcase
+      if Rules.input_is_valid?(input, @guessed_letters)
+        valid_input = true
       else
-        puts 'Incorrect input. Enter a single character from A to Z.'
+        puts 'Incorrect input. Enter a single character from A to Z or (save).'
       end
     end
 
-    guessed_letters << guess
-    guess
+    input
   end
 end
 
