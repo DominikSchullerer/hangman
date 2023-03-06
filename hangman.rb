@@ -160,7 +160,6 @@ class Board
   def draw_board
     puts '_______________________________________'
     draw_hangman(@wrong_letters.length)
-    p @word
     puts @word_string
     print 'Correct letters: '
     @correct_letters.each { |char| print "#{char} " }
