@@ -68,7 +68,6 @@ class GM
     end
 
     @board.word_string = Rules.updated_word_string(@board.word, @board.correct_letters)
-    @board.draw_board
   end
 
   def game_loop
