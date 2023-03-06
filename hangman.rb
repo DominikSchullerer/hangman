@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'yaml'
+
 # Rules class handles the game mechanics
 class Rules
   def self.updated_word_string(word, correct_letters)
@@ -42,6 +44,8 @@ class GM
 
   def initialize
     @word_list = File.readlines('resources/word_list.txt', chomp: true)
+    puts "Hangman!\n\n"
+    main_loop
   end
 
   def random_word
@@ -72,13 +76,68 @@ class GM
 
     @board.draw_board
     while gamestate == 'playing'
-      guess = @player.player_guess
-      handle_guess(guess)
-      @board.draw_board
-      gamestate = Rules.gamestate(@board.word, @board.word_string, @board.wrong_letters)
+      print 'Do you want to save and quit (y)? '
+      if gets.chomp.downcase == 'y'
+        save_game
+        gamestate = 'saved'
+      else
+        guess = @player.player_guess
+        handle_guess(guess)
+        @board.draw_board
+        gamestate = Rules.gamestate(@board.word, @board.word_string, @board.wrong_letters)
+      end
     end
 
     @board.put_final_message(gamestate)
+  end
+
+  def main_loop
+    running = true
+    while running
+      puts 'What do you want to do?'
+      puts "(n)ew game \n(q)uit \n(l)oad"
+      case gets.downcase.chomp
+      when 'n'
+        new_game
+      when 'q'
+        running = false
+      when 'l'
+        load_game
+      else
+        puts "Invalid Input \n\n"
+      end
+    end
+  end
+
+  def save_game
+    serialized_board = YAML.dump(@board)
+
+    Dir.mkdir('saved_games') unless Dir.exist?('saved_games')
+
+    File.open('saved_games/save.yaml', 'w') do |file|
+      file.puts serialized_board
+    end
+  end
+
+  def load_game
+    filename = 'saved_games/save.yaml'
+    if File.exist?(filename)
+      @player = Player.new
+
+      @board = YAML.safe_load(
+        File.read(filename),
+        permitted_classes: [Board]
+      )
+
+      File.delete(filename)
+
+      @board.correct_letters.each { |char| @player.guessed_letters << char }
+      @board.wrong_letters.each { |char| @player.guessed_letters << char }
+
+      game_loop
+    else
+      puts "\nNo savedata found\n\n"
+    end
   end
 end
 
@@ -101,31 +160,31 @@ class Board
   def draw_board
     puts '_______________________________________'
     draw_hangman(@wrong_letters.length)
-    puts @word
+    p @word
     puts @word_string
-    print 'Wrong letters: '
-    @wrong_letters.each { |char| print "#{char} " }
-    puts ''
     print 'Correct letters: '
     @correct_letters.each { |char| print "#{char} " }
+    puts ''
+    print 'Incorrect letters: '
+    @wrong_letters.each { |char| print "#{char} " }
     puts ''
   end
 
   def put_final_message(gamestate)
     case gamestate
     when 'won'
-      puts 'You have won!'
+      puts "\nYou have won!\n\n"
     when 'lost'
-      puts "You have lost! The hidden word was #{@word}"
-    else
-      puts 'Error! This should not be reached'
+      puts "\nYou have lost! The hidden word was #{@word}\n\n"
+    when 'saved'
+      puts "\nYou have saved your game.\n\n"
     end
   end
 end
 
 # Player handles the player input
 class Player
-  attr_reader :guessed_letters
+  attr_accessor :guessed_letters
 
   def initialize(guessed_letters = [])
     @guessed_letters = guessed_letters
@@ -135,12 +194,12 @@ class Player
     valid_guess = false
 
     until valid_guess
-      puts 'Your guess?'
+      puts 'Guess a letter of the hidden word.'
       guess = gets.chomp.upcase
       if Rules.guess_is_valid?(guess, @guessed_letters)
         valid_guess = true
       else
-        puts 'Incorrect input. Enter a single character from A to Z'
+        puts 'Incorrect input. Enter a single character from A to Z.'
       end
     end
 
@@ -149,5 +208,4 @@ class Player
   end
 end
 
-gm = GM.new
-gm.new_game
+GM.new
